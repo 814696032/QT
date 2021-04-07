@@ -88,6 +88,7 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
             self.close()
 
     def init_menu(self):
+
         self.menu1 = QMenu()  # 第一个按钮菜单
         self.menu1.setObjectName("menu1")
 
@@ -250,7 +251,7 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         else:
             event.ignore()#忽略该指令
 
-
+import time
 
 
 class About_Window(QDialog,Ui_about):  # 关于对话框

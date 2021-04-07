@@ -22,6 +22,21 @@ import time
 from win32process import SuspendThread, ResumeThread
 from PyQt5 import QtMultimedia
 
+cls_map = {'0': "建筑", '1': "车辆", '2': "烟雾", '3': "挖掘", '4': "人"}
+color_map = {'0': [0, 255, 255], '1': [255, 0, 0], '2': [0, 255, 0], '3': [0, 0, 255], '4': [255, 255, 0]}
+
+
+class Time(QThread):
+
+    def __init__(self,parent):
+        super(Time,self).__init__()
+        self.parent = parent
+    def run(self):
+        while(1):
+            t = time.strftime('%H:%M:%S')
+            self.parent.lcdNumber.display(t)
+            time.sleep(1)
+
 #逻辑文件，业务文件
 class AppDialog(MainDialog):
     # <editor-fold desc="属性">
@@ -87,6 +102,9 @@ class AppDialog(MainDialog):
         self.progress_wait.setWindowModality(Qt.ApplicationModal )
         self.progress_bar.hide()
         self.progress_wait.hide()
+
+        self.timer = Time(self)
+        self.timer.start()
 
         # 右侧列表点击显示
         self.list1.itemDoubleClicked.connect(self.list_disp.show)
@@ -361,6 +379,7 @@ class AppDialog(MainDialog):
         self.files.append(file)
 
     def show_window_build(self,xml_path = './current.xml'):
+        self.xml_path = xml_path
         self.op = Xml_Tools(xml_path)
         self.op.Init_xml(xml_path)
         self.bd = BackgroudDisp(self,self.files,self.op)
@@ -419,7 +438,7 @@ class AppDialog(MainDialog):
         self.line_group, self.cd_group, self.od_group,self.cls_num = gi.Disp()
         report = CurrentImgLog(self,self.cd_group, self.od_group)
         report.update()
-        self.chart.updateChart(self.cls_num)
+
         self.scene.addItem(self.line_group)
         self.scene.addItem(self.cd_group)
         self.scene.addItem(self.od_group)
@@ -492,13 +511,11 @@ class AppDialog(MainDialog):
         if reply == QtWidgets.QMessageBox.Cancel:
             return
 
+
         # 结束进程
         self.bd.is_running = False
-
         try:
-
-            self.thread.stop()
-            print("已终止线程") # 暂时有问题
+            self.play_stop()
         except:
             print("线程未开启")
         if self.isShow:
@@ -508,6 +525,7 @@ class AppDialog(MainDialog):
             self.sublay.image_left.setEnabled(True)
             self.sublay.image_right.setEnabled(True)
             self.isShow = False
+
         if self.list1.count():
             self.list_info.setText("None")
             self.list1.clear()
@@ -517,6 +535,8 @@ class AppDialog(MainDialog):
             self.list_info.setText("None")
             self.list2.clear()
         self.textBrowser.clear()
+        self.label.clear()
+        self.chart.clearChart()
         self.printf("重置程序")
 
     def save_result(self):
@@ -527,18 +547,22 @@ class AppDialog(MainDialog):
         if self.res_save_dir_name == "":
             return
         today = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-        print(self.res_save_dir_name + '/' + today)
         self.progress_bar.show()
         calc = External()
         calc.countChanged.connect(self.onCountChanged)
         calc.start()
 
         shutil.copytree('./temp', self.res_save_dir_name+'/'+today, ignore=shutil.ignore_patterns('*.pyc', 'tmp*'))
+        shutil.copyfile(self.xml_path, self.res_save_dir_name+'/'+today+"/result.xml")
         try:
             StrText = self.textBrowser.toPlainText()
             qS = str(StrText)
             f = open(self.res_save_dir_name+'/'+today+"/log.txt", 'w')
-            print(f.write('{}'.format(qS)))
+            f.write('目标检测统计：\n')
+            for i in range(len(self.chart.data)):
+                f.write("%s:%s\n"%(cls_map[str(i)],self.chart.data[i]))
+            f.write("\n\n[本次保存日志]")
+            f.write('{}'.format(qS))
             f.close()
         except Exception as e:
             print(e)
@@ -777,6 +801,7 @@ class BackgroudDisp(QThread):
         self.taskButton = QWinTaskbarButton(parent)
         self.taskButton.setWindow(parent.windowHandle())
         self.taskProgress = self.taskButton.progress()
+        self.parent = parent
         self.taskProgress.setMaximum(100)
         self.taskProgress.setMinimum(0)
         self.path_list = path_list
@@ -790,12 +815,14 @@ class BackgroudDisp(QThread):
         self.is_running = True
         self.taskProgress.setVisible(True)
         self.taskProgress.show()
+        parent.chart.show()
 
 
     def run(self):
         import time
         while(self.cur<=self.size-1 and self.is_running):
-            self.taskProgress.setValue(int(self.cur*100 / (self.size-1)))
+            if self.size>1:
+                self.taskProgress.setValue(int(self.cur*100 / (self.size-1)))
             path = self.path_list[self.cur]
             size_info = [self.width,self.height,self.depth]
             line_info = self.factory.line()
@@ -803,6 +830,11 @@ class BackgroudDisp(QThread):
             cd_info = self.factory.cd_box()
             time.sleep(0.5)
             od_info = self.factory.od_box()
+            cls_num = [0,0,0,0,0]
+            if(len(od_info[0])!=0):
+                for item in od_info:
+                    cls_num[item[4]]+=1
+            self.parent.chart.updateChart(cls_num)
             time.sleep(0.2)
             self.op.write(path,size_info,line_info,cd_info,od_info)
             self.cur+=1
@@ -811,6 +843,8 @@ class BackgroudDisp(QThread):
             self.taskProgress.hide()
         else:
             self.Finish.emit("中断后台处理")
+            self.taskProgress.hide()
+            self.taskProgress.setValue(0)
 
 
 class Play(QThread):  # 播放图片的线程
