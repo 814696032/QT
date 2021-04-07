@@ -13,7 +13,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import pyqtSignal,QThread,Qt,pyqtSlot,QSize,QRect
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QStyle,QGraphicsDropShadowEffect
-from BarStack import ChartView
+from BarStack import ChartView2
 import configparser as cp
 
 
@@ -228,9 +228,9 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         # self.background_movie.start()  # 是否需要动态背景
 
     def init_chart(self):
-        self.chart = ChartView(self.label_2)
+        self.chart = ChartView2(self.label_2)
         self.chart.setObjectName("chart")
-        self.chart.resize(300,184)
+        self.chart.resize(300,200)
 
     def init_other(self):
         pass

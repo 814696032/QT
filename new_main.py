@@ -58,7 +58,6 @@ class AppDialog(MainDialog):
             # self.minwin.setEnabled(False)
         if not eval(self.cfg['fullscreen']):
             self.setGeometry(eval(self.cfg['position'].split(',')[0]),eval(self.cfg['position'].split(',')[1]),self.width(),self.height())
-        print(self.width(),self.height())
         self.about_window = About_Window()
         self.setting_window = Setting_Window()
         self.sublay = Image_Window()
@@ -139,9 +138,16 @@ class AppDialog(MainDialog):
     def printf(self, mes):  # print日志到日志窗口
         now_time = datetime.datetime.now().strftime("%H:%M:%S")
         self.textBrowser.append("["+now_time+"] " + mes)  # 在指定的区域显示提示信息
-        self.cursor = self.textBrowser.textCursor()
-        self.textBrowser.moveCursor(self.cursor.End)  # 光标移到最后，这样就会自动显示出来
+        cursor = self.textBrowser.textCursor()
+        self.textBrowser.moveCursor(cursor.End)  # 光标移到最后，这样就会自动显示出来
         QtWidgets.QApplication.processEvents()  # 一定加上这个功能，不然有卡顿
+
+    def printf_report(self,mes):  # 报告当前图片检测结果
+        self.label.append(mes)
+        cursor = self.label.textCursor()
+        self.label.moveCursor(cursor.End)
+        QtWidgets.QApplication.processEvents()
+
 
     def resizeEvent(self,event):
         self.background_movie.setScaledSize(QtCore.QSize(self.centralwidget.width(), self.centralwidget.height()))
@@ -196,7 +202,7 @@ class AppDialog(MainDialog):
     def keyPressEvent(self, event): #监控按键事件  用于添加快捷键
         if (event.key() == QtCore.Qt.Key_A):  # A D实现同一目录下的显示图片切换
             self.lastImage()
-        elif(event.key()==QtCore.Qt.Key_D):
+        if(event.key()==QtCore.Qt.Key_D):
             self.nextImage()
     # </editor-fold>
     #******************槽函数部分*********************
@@ -252,7 +258,6 @@ class AppDialog(MainDialog):
             open_path = self.last_dir
         openfile_name, openfile_type = QtWidgets.QFileDialog.getOpenFileName(None,"选择图片",open_path,
                                                                             "Img Files (*.jpg *.jpeg *.bmp);;All Files (*)")  # 起始路径
-        print(openfile_name)
         if openfile_name == "": #取消选择
             self.__show_warning_message_box("未选择图片")
             return
@@ -358,7 +363,7 @@ class AppDialog(MainDialog):
     def show_window_build(self,xml_path = './current.xml'):
         self.op = Xml_Tools(xml_path)
         self.op.Init_xml(xml_path)
-        self.bd = BackgroudDisp(self.files,self.op)
+        self.bd = BackgroudDisp(self,self.files,self.op)
         self.bd.Finish.connect(self.printf)
         self.bd.start()
         # self.update_image_window_UI()
@@ -370,6 +375,7 @@ class AppDialog(MainDialog):
 
     def showImage2(self,mask1=None,mask2=None,mask3=None):
         self.isShow = True
+        self.label.clear()
         current_file_name = self.files[self.cur]
         img = cv2.imdecode(np.fromfile(current_file_name, dtype=np.uint8), -1)  # 读入中文目录 RGB格式
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)  # 转化为BGR格式
@@ -410,11 +416,13 @@ class AppDialog(MainDialog):
             QApplication.processEvents()
         self.progress_wait.hide()
         gi = GetItems(d)
-        self.line_group, self.cd_group, self.od_group = gi.Disp()
+        self.line_group, self.cd_group, self.od_group,self.cls_num = gi.Disp()
+        report = CurrentImgLog(self,self.cd_group, self.od_group)
+        report.update()
+        self.chart.updateChart(self.cls_num)
         self.scene.addItem(self.line_group)
         self.scene.addItem(self.cd_group)
         self.scene.addItem(self.od_group)
-
 
         self.sublay.image_view.setScene(self.scene)
         self.sublay.image_view.setStyleSheet("padding: 0px; border: 0px;")  # view正好和图片一致时不会出现滑条
@@ -430,6 +438,19 @@ class AppDialog(MainDialog):
     def update_image_window_UI(self):
         # 每次显示图片时，根据图片序号 修改显示的UI
         # 左右切换的按钮开关
+        if self.sublay.image_line.isChecked():
+            if self.line_group is not None:self.line_group.show()
+        else:
+            if self.line_group is not None:self.line_group.hide()
+        if self.sublay.image_change_detect.isChecked():
+            if self.cd_group is not None:self.cd_group.show()
+        else:
+            if self.cd_group is not None:self.cd_group.hide()
+        if self.sublay.image_obj_detect.isChecked():
+            if self.od_group is not None:self.od_group.show()
+        else:
+            if self.od_group is not None:self.od_group.hide()
+
         if self.mode == 4:# 正在播放
             self.sublay.image_left.setHidden(True)
             self.sublay.image_right.setHidden(True)
@@ -747,11 +768,17 @@ class AppDialog(MainDialog):
 
 
 from experiment.box_factory import BoxFactory
+from PyQt5.QtWinExtras import QWinTaskbarButton
 class BackgroudDisp(QThread):
     Finish = pyqtSignal(str)
     is_running = True
-    def __init__(self,path_list,op):
+    def __init__(self,parent,path_list,op):
         super(BackgroudDisp,self).__init__()
+        self.taskButton = QWinTaskbarButton(parent)
+        self.taskButton.setWindow(parent.windowHandle())
+        self.taskProgress = self.taskButton.progress()
+        self.taskProgress.setMaximum(100)
+        self.taskProgress.setMinimum(0)
         self.path_list = path_list
         self.op = op
         self.size = len(path_list)
@@ -761,10 +788,14 @@ class BackgroudDisp(QThread):
         self.depth = 3
         self.factory = BoxFactory(self.width,self.height)
         self.is_running = True
+        self.taskProgress.setVisible(True)
+        self.taskProgress.show()
+
 
     def run(self):
         import time
         while(self.cur<=self.size-1 and self.is_running):
+            self.taskProgress.setValue(int(self.cur*100 / (self.size-1)))
             path = self.path_list[self.cur]
             size_info = [self.width,self.height,self.depth]
             line_info = self.factory.line()
@@ -777,6 +808,7 @@ class BackgroudDisp(QThread):
             self.cur+=1
         if self.is_running:
             self.Finish.emit("后台处理完成！")
+            self.taskProgress.hide()
         else:
             self.Finish.emit("中断后台处理")
 
@@ -800,6 +832,36 @@ class Play(QThread):  # 播放图片的线程
             time.sleep(1)
             self.next_signal.emit()
         print('播放进程结束')
+
+class CurrentImgLog(object):
+    def __init__(self,parent,cd_group,od_group):
+        super(CurrentImgLog,self).__init__()
+        self.parent = parent
+        self.cd = cd_group
+        self.od = od_group
+
+    def update(self):
+        if self.cd is not None:
+            self.parent.printf_report("【变化检测】")
+            for item in self.cd.childItems():
+
+                x = item.boundingRect().x()
+                y = item.boundingRect().y()
+
+                width = item.boundingRect().width()
+                height = item.boundingRect().height()
+                self.parent.printf_report("(%s,%s)产生<font color='red'>变化<font color='white'>，范围(%s×%s)"%(x,y,width,height))
+        if self.od is not None:
+            self.parent.printf_report("【目标检测】")
+            for item in self.od.childItems():
+                x = item.boundingRect().x()
+                y = item.boundingRect().y()
+                if x==0 and y==0:
+                    continue
+                width = item.boundingRect().width()
+                height = item.boundingRect().height()
+                self.parent.printf_report("(%s,%s)存在<font color='yellow'>目标<font color='white'>，范围(%s×%s)" % (x, y, width, height))
+
 
 
 if __name__=='__main__':
