@@ -208,59 +208,38 @@
     <bool>true</bool>
    </property>
   </widget>
-  <widget class="QCheckBox" name="image_constant">
+  <widget class="QPushButton" name="image_stop_detect">
    <property name="geometry">
     <rect>
-     <x>170</x>
-     <y>530</y>
-     <width>91</width>
-     <height>19</height>
+     <x>410</x>
+     <y>500</y>
+     <width>50</width>
+     <height>50</height>
     </rect>
    </property>
-   <property name="text">
-    <string>连续模式</string>
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
    </property>
-  </widget>
-  <widget class="QLabel" name="image_change_view">
-   <property name="geometry">
-    <rect>
-     <x>80</x>
-     <y>290</y>
-     <width>251</width>
-     <height>201</height>
-    </rect>
+   <property name="minimumSize">
+    <size>
+     <width>50</width>
+     <height>50</height>
+    </size>
    </property>
-   <property name="text">
-    <string/>
-   </property>
-  </widget>
-  <widget class="QLabel" name="image_obj_view">
-   <property name="geometry">
-    <rect>
-     <x>80</x>
-     <y>50</y>
-     <width>251</width>
-     <height>251</height>
-    </rect>
+   <property name="maximumSize">
+    <size>
+     <width>50</width>
+     <height>50</height>
+    </size>
    </property>
    <property name="text">
     <string/>
    </property>
-  </widget>
-  <widget class="QLabel" name="image_line_view">
-   <property name="geometry">
-    <rect>
-     <x>380</x>
-     <y>100</y>
-     <width>251</width>
-     <height>341</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="scaledContents">
-    <bool>false</bool>
+   <property name="flat">
+    <bool>true</bool>
    </property>
   </widget>
   <zorder>image_view</zorder>
@@ -270,12 +249,9 @@
   <zorder>image_title</zorder>
   <zorder>image_close</zorder>
   <zorder>image_line</zorder>
-  <zorder>image_constant</zorder>
-  <zorder>image_change_view</zorder>
-  <zorder>image_obj_view</zorder>
-  <zorder>image_line_view</zorder>
   <zorder>image_right</zorder>
   <zorder>image_left</zorder>
+  <zorder>image_stop_detect</zorder>
  </widget>
  <resources/>
  <connections/>

@@ -22,6 +22,7 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
     def __init__(self, parent=None): #初始化
         super(MainDialog,self).__init__(parent)
         self.setupUi(self) #初始化页面
+        self.resize(1280,800)
         self.initUI()
 
 
@@ -31,7 +32,7 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         self.background.setGeometry(QRect(0,0,800,300))
         self.setLayout(self.background)
         self.workspace_lay = QHBoxLayout()
-        self.workspace_lay.setContentsMargins(0,0,0,0)
+        self.workspace_lay.setContentsMargins(10,10,10,10)
         self.workspace.setLayout(self.workspace_lay)
 
 
@@ -40,11 +41,12 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         self.init_menu()
         self.init_gif()
         self.init_chart()
+        self.init_other()
 
     def init_title(self):  # 初始化自定义标题栏
 
-        # self.setWindowFlags(Qt.CustomizeWindowHint)
-        self.setWindowFlags(Qt.FramelessWindowHint)  # 取消标题栏
+        self.setWindowFlags(Qt.CustomizeWindowHint)
+        # self.setWindowFlags(Qt.FramelessWindowHint)  # 取消标题栏
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.maxwin.setIcon(QIcon(QPixmap('./Resource/maxwin.ico')))
         self.maxwin.setIconSize(QSize(20, 20))
@@ -97,6 +99,9 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         # self.action_opendir.triggered.connect(lambda: print("打开目录"))
         self.action_openvideo=QAction("载入视频",self.menu1)
         self.menu1.addAction(self.action_openvideo)
+        self.action_opendata=QAction("载入数据",self.menu1)
+        self.menu1.addAction(self.action_opendata)
+        self.action_opendata.triggered.connect(lambda: print("载入数据"))
 
         self.action_save = QAction("保存",self.menu1)
         self.menu1.addAction(self.action_save)
@@ -227,6 +232,9 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         self.chart.setObjectName("chart")
         self.chart.resize(300,184)
 
+    def init_other(self):
+        pass
+
     # *********关于选项**************
     # def open_about(self):
     #     about_win = Ui_about()
@@ -236,8 +244,7 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
     # *********事件部分重写************
     def closeEvent(self,event ) : #重新实现关闭事件
         reply = QtWidgets.QMessageBox.question(self,'关闭确认','是否关闭？',
-                                               QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No |
-                                               QtWidgets.QMessageBox.Cancel)
+                                               QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         if reply == QtWidgets.QMessageBox.Yes:
             event.accept()#接受退出指令
         else:
@@ -276,6 +283,7 @@ class Setting_Window(QWidget,Ui_setting):  # 设置对话框
         # self.cfg['save_dir']=json_str['Save_dir']
 
 class Image_Window(QWidget,Ui_Image_windows):
+    sp = 1
     def __init__(self):
         super(Image_Window,self).__init__()
         self.setupUi(self)
@@ -285,30 +293,17 @@ class Image_Window(QWidget,Ui_Image_windows):
         # self.image_left.setIconSize(QSize(50, 50))
         # self.image_right.setIcon(QIcon(QPixmap('./Resource/image_right.png')))
         # self.image_right.setIconSize(QSize(50, 50))
+        self.sp = 1
         self.image_start_detect.setIcon(QIcon(QPixmap('./Resource/image_start.png')))
+        self.image_stop_detect.setIcon(QIcon(QPixmap('./Resource/image_stop.png')))
         self.image_start_detect.setIconSize(QSize(50, 50))
+        self.image_stop_detect.setIconSize(QSize(50, 50))
         self.image_close.setIcon(QIcon(QPixmap('./Resource/exit.ico')))
         # self.image_close.setIconSize(QSize(50,50))
         self.image_left.setHidden(False)
         self.image_right.setHidden(False)
         self.image_right.raise_()
         self.image_left.raise_()
-
-        self.image_close.clicked.connect(self.close)
-        # self.image_view.fitInView(0, 0, self.width(), self.height(), Qt.KeepAspectRatio)
-        self.image_line.stateChanged.connect(self.line_check_event)
-        self.image_change_detect.stateChanged.connect(self.change_check_event)
-        self.image_obj_detect.stateChanged.connect(self.obj_check_event)
-
-        self.image_line_view.setPixmap(QPixmap('./Resource/line.png'))
-        self.image_change_view.setPixmap(QPixmap('./Resource/change.png'))
-        self.image_obj_view.setPixmap(QPixmap('./Resource/obj.png'))
-        self.image_line_view.setScaledContents(True)
-        self.image_change_view.setScaledContents(True)
-        self.image_obj_view.setScaledContents(True)
-
-
-
 
 
     def resizeEvent(self,event):
@@ -318,36 +313,25 @@ class Image_Window(QWidget,Ui_Image_windows):
         self.image_left.setGeometry(0,25,50,self.height()-25-75)
         self.image_right.setGeometry(self.width()-40,25,50,self.height()-25-75)
         self.image_view.setGeometry(0,25,self.width(),self.height()-25-75)
-        self.image_line_view.setGeometry(0,25,self.width(),self.height()-25-75)
-        self.image_obj_view.setGeometry(0, 25, self.width(), self.height() - 25 - 75)
-        self.image_change_view.setGeometry(0, 25, self.width(), self.height() - 25 - 75)
         self.image_start_detect.setGeometry(self.width()/2-25,self.height()-50-4-20,50,50)
+        self.image_stop_detect.setGeometry(self.width()/2+25+20,self.height()-50-4-20,50,50)
         self.image_change_detect.setGeometry(self.width()/2-200,self.height()-25-20,87,19)
         self.image_obj_detect.setGeometry(self.width() / 2 - 200, self.height() - 50-20, 87, 19)
         self.image_line.setGeometry(self.width()/2-200,self.height()-20,97,19)
-        self.image_constant.setGeometry(self.width() / 2 + 200, self.height() - 50-20, 87, 19)
 
-    def line_check_event(self,sig):
-        if sig==0:
-            self.image_line_view.hide()
-        if sig==2 or sig==1:
-            self.image_line_view.show()
-        print("line_check_test")
-        QtWidgets.QApplication.processEvents()
-
-    def change_check_event(self,sig):
-        if sig==0:
-            self.image_change_view.hide()
-        if sig==2 or sig==1:
-            self.image_change_view.show()
-        QtWidgets.QApplication.processEvents()
-
-    def obj_check_event(self,sig):
-        if sig==0:
-            self.image_obj_view.hide()
-        if sig==2 or sig==1:
-            self.image_obj_view.show()
-        QtWidgets.QApplication.processEvents()
+    def switch_play_icon(self,flag):
+        if flag=='p':
+            self.image_start_detect.setIcon(QIcon(QPixmap('./Resource/image_pause.png')))
+            self.image_start_detect.setIconSize(QSize(50, 50))
+            self.update()
+            QApplication.processEvents()
+        elif(flag=='s'):
+            self.image_start_detect.setIcon(QIcon(QPixmap('./Resource/image_start.png')))
+            self.image_start_detect.setIconSize(QSize(50, 50))
+            self.update()
+            QApplication.processEvents()
+        else:
+            pass
 
 
 
@@ -606,6 +590,74 @@ class PercentProgressBar(QWidget):
 
     def setValue(self, value):
         self.value = value
+
+    def sizeHint(self) -> QSize:
+        return QSize(100, 100)
+
+class CircleProgressBar(QWidget):
+
+    Color = QColor(24, 189, 155)  # 圆圈颜色
+    Clockwise = True  # 顺时针还是逆时针
+    Delta = 36
+
+    def __init__(self, *args, color=None, clockwise=True, **kwargs):
+        super(CircleProgressBar, self).__init__(*args, **kwargs)
+        self.angle = 0
+        self.Clockwise = clockwise
+        if color:
+            self.Color = color
+        self._timer = QTimer(self, timeout=self.update)
+        self._timer.start(100)
+
+    def paintEvent(self, event):
+        super(CircleProgressBar, self).paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.translate(self.width() / 2, self.height() / 2)
+        side = min(self.width(), self.height())
+        painter.scale(side / 100.0, side / 100.0)
+        painter.rotate(self.angle)
+        painter.save()
+        painter.setPen(Qt.NoPen)
+        color = self.Color.toRgb()
+        for i in range(11):
+            color.setAlphaF(1.0 * i / 10)
+            painter.setBrush(color)
+            painter.drawEllipse(30, -10, 20, 20)
+            painter.rotate(36)
+        painter.restore()
+        self.angle += self.Delta if self.Clockwise else -self.Delta
+        self.angle %= 360
+
+    @pyqtProperty(QColor)
+    def color(self) -> QColor:
+        return self.Color
+
+    @color.setter
+    def color(self, color: QColor):
+        if self.Color != color:
+            self.Color = color
+            self.update()
+
+    @pyqtProperty(bool)
+    def clockwise(self) -> bool:
+        return self.Clockwise
+
+    @clockwise.setter
+    def clockwise(self, clockwise: bool):
+        if self.Clockwise != clockwise:
+            self.Clockwise = clockwise
+            self.update()
+
+    @pyqtProperty(int)
+    def delta(self) -> int:
+        return self.Delta
+
+    @delta.setter
+    def delta(self, delta: int):
+        if self.delta != delta:
+            self.delta = delta
+            self.update()
 
     def sizeHint(self) -> QSize:
         return QSize(100, 100)
