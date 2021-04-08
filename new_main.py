@@ -41,9 +41,11 @@ class Time(QThread):
 class AppDialog(MainDialog):
     # <editor-fold desc="属性">
     cur = 0  # 载入文件夹图片时，用于标定当前显示图片
+    temp_cur = -1
     change_item_num = 0
     object_item_num = 0
     mode = -1  # 0 图片模式 1 文件夹模式  2视频模式 3数据模式 4正在播放 5正在暂停
+    playback = False
     files = []  # 载入文件夹图片时，读入文件名
     dir_name = ''  # 目录名字
     ctrlPressed = False  # ctrl键是否被按下，用于实现ctrl+滚轮缩放图像
@@ -107,8 +109,8 @@ class AppDialog(MainDialog):
         self.timer.start()
 
         # 右侧列表点击显示
-        self.list1.itemDoubleClicked.connect(self.list_disp.show)
-        self.list2.itemDoubleClicked.connect(self.list_disp.show)  # 新建窗口
+        # self.list1.itemDoubleClicked.connect(self.list_disp.show)
+        # self.list2.itemDoubleClicked.connect(self.list_disp.show)  # 新建窗口
         self.list1.itemDoubleClicked.connect(lambda: self.list_show(self.list1))
         self.list2.itemDoubleClicked.connect(lambda: self.list_show(self.list2))  # 显示小图
         self.list1.itemClicked.connect(lambda: self.list_show_little(self.list1))
@@ -120,14 +122,15 @@ class AppDialog(MainDialog):
         self.action_openfile.triggered.connect(self.openfile)
         self.action_opendir.triggered.connect(self.opendir)
         self.action_openvideo.triggered.connect(self.openvideo)
-
+        self.action_openxml.triggered.connect(self.openxml)
+        # self.action_opendata.triggered.connect()
         self.action_about.triggered.connect(self.about_window.show)
         self.action_view1.triggered.connect(self.click_view1)
         self.action_view2.triggered.connect(self.click_view2)
         self.action_setting.triggered.connect(self.setting_show)
         self.action_restart.triggered.connect(self.restart)
         self.action_save.triggered.connect(self.save_result)
-
+        self.action_exit.triggered.connect(self.close_safe)
         # </editor-fold>
     # *********设置功能调用************  TODO 这里还有个小bug：打开设置，改动后点击取消，窗口状态还是保持了，只是设置没应用，这里要修改
         # <editor-fold desc="设置功能调用">
@@ -222,6 +225,16 @@ class AppDialog(MainDialog):
             self.lastImage()
         if(event.key()==QtCore.Qt.Key_D):
             self.nextImage()
+
+    def close_safe(self):
+        try:
+            self.bd.is_running = False
+            self.play_stop()
+        except:
+            print("线程未开启")
+        self.close()
+
+
     # </editor-fold>
     #******************槽函数部分*********************
     def __show_warning_message_box(self, msg):
@@ -268,6 +281,7 @@ class AppDialog(MainDialog):
 
     def openfile(self): #菜单中openfile 绑定的槽函数
         self.cur = 0
+        self.temp_cur = -1
         self.files=[]
         # self.image=[]  # 清空文件和图片列表，防止多次打开出现bug
         if self.last_dir=="":  # 如果第一次打开  就进入程序目录； 后续打开 进入上一次的目录
@@ -299,6 +313,7 @@ class AppDialog(MainDialog):
 
     def opendir(self):#与opendir绑定
         self.cur = 0  # 默认从第一张开始显示
+        self.temp_cur = -1
         self.files=[]
         # self.image=[] # 清空文件和图片列表，防止多次打开出现bug
         if self.last_dir=="":  # 如果第一次打开  就进入程序目录； 后续打开 进入上一次的目录
@@ -334,6 +349,7 @@ class AppDialog(MainDialog):
         # TODO 载入视频的过程需要等待  暂时不能取消 后续会加入
         self.files=[]  # 清理缓存
         self.cur = 0
+        self.temp_cur = -1
         if self.last_dir=="":  # 如果第一次打开  就进入程序目录； 后续打开 进入上一次的目录
             open_path = self.cwd
         else:
@@ -378,61 +394,80 @@ class AppDialog(MainDialog):
     def openvideo_addfile_slot(self,file):
         self.files.append(file)
 
+    def openxml(self):
+        self.cur = 0
+        self.temp_cur = -1
+        self.files=[]
+        if self.last_dir=="":  # 如果第一次打开  就进入程序目录； 后续打开 进入上一次的目录
+            open_path = self.cwd
+        else:
+            open_path = self.last_dir
+        openfile_name, openfile_type = QtWidgets.QFileDialog.getOpenFileName(None,"选择xml文件",open_path,
+                                                                            "Img Files (*.xml);;All Files (*)")  # 起始路径
+        if openfile_name == "": #取消选择
+            self.__show_warning_message_box("未选择文件")
+            return
+        if self.isShow:  # 避免同时打开多个窗口
+            self.restart()
+
+        typelist = ['xml']
+        if os.path.splitext(openfile_name)[-1][1:].lower() not in typelist:
+            self.__show_warning_message_box("无法打开该格式的文件")
+            return
+
+        current_dir = os.path.dirname(openfile_name)  # 实现打开上次访问的目录
+        if current_dir != open_path:
+            self.last_dir = current_dir
+        self.dir='' #避免bug  线程在用 且保留
+        try:
+            Ins = Xml_Tools(openfile_name)
+            self.files = Ins.getFileList()
+        except:
+            self.__show_warning_message_box("xml数据文件错误")
+            return
+
+        xml_path = openfile_name
+        self.playback = True
+        self.show_window_build(xml_path)
+
     def show_window_build(self,xml_path = './current.xml'):
         self.xml_path = xml_path
         self.op = Xml_Tools(xml_path)
-        self.op.Init_xml(xml_path)
-        self.bd = BackgroudDisp(self,self.files,self.op)
-        self.bd.Finish.connect(self.printf)
-        self.bd.start()
-        # self.update_image_window_UI()
-        # self.sublay.show()
-        # self.sublay.image_title.setText(current_file_name)
-        # 展示窗口标题栏需不需要动态变化还在商榷
-        # 甚至可以试试 来一个进度条
-        self.showImage2()
+        if self.playback == False:
+            self.op.Init_xml(xml_path)
+            self.bd = BackgroudDisp(self,self.files,self.op)
+            self.bd.Finish.connect(self.printf)
+            self.bd.item_sig.connect(self.list_add_item)
+            self.bd.start()
+            self.showImage()
+        else:  # 回放模式
+            self.op.flag = 1
+            self.showImage_xml()
 
-    def showImage2(self,mask1=None,mask2=None,mask3=None):
+    def showImage(self):
         self.isShow = True
         self.label.clear()
         current_file_name = self.files[self.cur]
+        while(1):
+            # print("正在寻找",self.cur)
+            flag,d = self.op.read(os.path.split(current_file_name)[1])
+            if(flag):
+                # print("已找到")
+                break
+            self.progress_wait.show()
+            QApplication.processEvents()
+
         img = cv2.imdecode(np.fromfile(current_file_name, dtype=np.uint8), -1)  # 读入中文目录 RGB格式
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)  # 转化为BGR格式
-        # 在这里叠加mask
-        # if mask1 is not None:
-        #     img = merge_mask(img,mask1)
-        #     # img = img + mask1  # 带画线的
-        # if mask2 is not None:  # 带变化的
-        #     change_item_temp_pic = merge_mask(img,mask2)
-        #     # change_item_temp_pic = img + mask2
-        #     self.list_add_item(self.list1,change_item_temp_pic)  # 将画线与变化存入item
-        # if mask3 is not None:  # 带目标的
-        #     object_item_temp_pic = merge_mask(img, mask3)
-        #     # object_item_temp_pic = img + mask3
-        #     self.list_add_item(self.list2, object_item_temp_pic)  # 将画线与目标存入item
-        # if mask2 is not None:
-        #     img = img + mask2
-        # if mask3 is not None:
-        #     img = img + mask3
         # 图片属性（先读入图片属性，再根据属性调整窗口和视野）
         height,width,depth = img.shape
         ratio = float(height / width)  # 高宽比
-
         # 使用graphicsView显示图片
         self.cvimg = QImage(img.data, width, height, width * depth, QImage.Format_RGB888)
         self.pix = QtGui.QPixmap.fromImage(self.cvimg)
         self.item = QtWidgets.QGraphicsPixmapItem(self.pix)  # 创建像素图元
         self.scene = QtWidgets.QGraphicsScene()  # 创建场景
         self.scene.addItem(self.item)
-
-        while(1):
-            # print("正在寻找",self.cur)
-            flag,d = self.op.read(os.path.split(current_file_name)[1])
-            if(flag):
-                # print("已找到")
-                break;
-            self.progress_wait.show()
-            QApplication.processEvents()
         self.progress_wait.hide()
         gi = GetItems(d)
         self.line_group, self.cd_group, self.od_group,self.cls_num = gi.Disp()
@@ -452,7 +487,48 @@ class AppDialog(MainDialog):
         self.update_image_window_UI()
         self.sublay.show()
 
-    # def showImage
+    def showImage_xml(self):
+        self.isShow = True
+        self.label.clear()
+        current_file_name = self.files[self.cur]
+            # print("正在寻找",self.cur)
+        flag, d = self.op.read(os.path.split(current_file_name)[1])
+        try:
+            img = cv2.imdecode(np.fromfile(current_file_name, dtype=np.uint8), -1)  # 读入中文目录 RGB格式
+        except:
+            self.__show_warning_message_box("未找到%s，请检查路径下是否存在该图片"%current_file_name)
+            self.cur = self.temp_cur
+            if self.mode==4:
+                self.play_stop()
+            return
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)  # 转化为BGR格式
+        # 图片属性（先读入图片属性，再根据属性调整窗口和视野）
+        height, width, depth = img.shape
+        ratio = float(height / width)  # 高宽比
+        # 使用graphicsView显示图片
+        self.cvimg = QImage(img.data, width, height, width * depth, QImage.Format_RGB888)
+        self.pix = QtGui.QPixmap.fromImage(self.cvimg)
+        self.item = QtWidgets.QGraphicsPixmapItem(self.pix)  # 创建像素图元
+        self.scene = QtWidgets.QGraphicsScene()  # 创建场景
+        self.scene.addItem(self.item)
+        self.progress_wait.hide()
+        gi = GetItems(d)
+        self.line_group, self.cd_group, self.od_group, self.cls_num = gi.Disp()
+        report = CurrentImgLog(self, self.cd_group, self.od_group)
+        report.update()
+        self.chart.updateChart(self.cls_num)
+        self.scene.addItem(self.line_group)
+        self.scene.addItem(self.cd_group)
+        self.scene.addItem(self.od_group)
+
+        self.sublay.image_view.setScene(self.scene)
+        self.sublay.image_view.setStyleSheet("padding: 0px; border: 0px;")  # view正好和图片一致时不会出现滑条
+        self.sublay.image_view.fitInView(self.item, Qt.KeepAspectRatio)
+        self.sublay.image_view.centerOn(self.item)
+        # self.sublay.image_view.fitInView(self.item4, Qt.KeepAspectRatio)
+        self.sublay.image_view.viewport().update()
+        self.update_image_window_UI()
+        self.sublay.show()
 
     def update_image_window_UI(self):
         # 每次显示图片时，根据图片序号 修改显示的UI
@@ -475,7 +551,7 @@ class AppDialog(MainDialog):
             self.sublay.image_right.setHidden(True)
             self.sublay.image_stop_detect.setEnabled(True)
             self.sublay.switch_play_icon('p')
-        elif self.mode == 5:
+        elif self.mode == 5:  # 正在暂停
             self.sublay.image_left.setHidden(True)
             self.sublay.image_right.setHidden(True)
             self.sublay.image_stop_detect.setEnabled(True)
@@ -513,7 +589,10 @@ class AppDialog(MainDialog):
 
 
         # 结束进程
-        self.bd.is_running = False
+        try:
+            self.bd.is_running = False
+        except:
+            print("后台未开启")
         try:
             self.play_stop()
         except:
@@ -522,9 +601,12 @@ class AppDialog(MainDialog):
             self.sublay.hide()
             self.files = []
             self.cur = 0
+            self.temp_cur = -1
             self.sublay.image_left.setEnabled(True)
             self.sublay.image_right.setEnabled(True)
             self.isShow = False
+            self.mode = -1
+            self.playback = False
 
         if self.list1.count():
             self.list_info.setText("None")
@@ -620,14 +702,22 @@ class AppDialog(MainDialog):
     def nextImage(self):  # next image
         if self.cur==len(self.files)-1:
             return
+        self.temp_cur = self.cur
         self.cur = self.cur + 1
-        self.showImage2()
+        if self.playback:
+            self.showImage_xml()
+        else:
+            self.showImage()
 
     def lastImage(self):  # previous image
         if self.cur==0:
             return
+        self.temp_cur = self.cur
         self.cur = self.cur - 1
-        self.showImage2()
+        if self.playback:
+            self.showImage_xml()
+        else:
+            self.showImage()
     # </editor-fold>
     #------------------设置窗口的逻辑函数--------------------#
     # <editor-fold desc="设置窗口逻辑函数">
@@ -718,34 +808,30 @@ class AppDialog(MainDialog):
         self.list_disp.setWindowTitle(item.text())
         self.list_disp.img.setScaledContents(True)
         if list_widget.objectName()=='list1':
-            pix = QPixmap(QImage('./temp/change_temp/%s_%s.jpg'%(list_widget.objectName(),item.text())))
+            pix = QPixmap(QImage('./temp/change_temp/%s'%(item.text())))
         else:
-            pix = QPixmap(QImage('./temp/object_temp/%s_%s.jpg' % (list_widget.objectName(), item.text())))
+            pix = QPixmap(QImage('./temp/object_temp/%s' % (item.text())))
         pix.scaled(self.list_disp.img.width(),self.list_disp.img.height(),Qt.KeepAspectRatioByExpanding)
         self.list_disp.img.setPixmap(pix)
+        self.list_disp.show()
 
     def list_show_little(self,list_widget):
         item = list_widget.selectedItems()[0]
         if list_widget.objectName()=='list1':
-            pix = QPixmap(QImage('./temp/change_temp/%s_%s.jpg'%(list_widget.objectName(),item.text())))
+            pix = QPixmap(QImage('./temp/change_temp/%s'%(item.text())))
         else:
-            pix = QPixmap(QImage('./temp/object_temp/%s_%s.jpg'%(list_widget.objectName(),item.text())))
+            pix = QPixmap(QImage('./temp/object_temp/%s'%(item.text())))
         pix.scaled(self.list_info.size(),Qt.KeepAspectRatio)
         self.list_info.setPixmap(pix)
         self.list_info.setScaledContents(True)
 
-    def list_add_item(self,list,mask):
-        mask = cv2.cvtColor(mask, cv2.COLOR_RGB2BGR)
-        if list==self.list1:
-            cv2.imwrite("./temp/change_temp/list1_%s.jpg" % self.change_item_num, mask)
-            self.printf("检测到变化")
-            self.list1.addItem('%s' % self.change_item_num)
-            self.change_item_num += 1
-        if list==self.list2:
-            self.printf("检测到目标")
-            cv2.imwrite("./temp/object_temp/list2_%s.jpg" % self.object_item_num, mask)
-            self.list2.addItem('%s' % self.object_item_num)
-            self.object_item_num += 1
+    def list_add_item(self,sig1, sig2):
+        if sig1 != "None":
+            self.printf("图片%s检测到变化"%sig1)
+            self.list1.addItem(sig1)
+        if sig2 != "None":
+            self.printf("图片%s检测到目标"%sig2)
+            self.list2.addItem(sig2)
 
     def freshImage(self):
         self.sublay.image_view.fitInView(self.item,Qt.KeepAspectRatio)
@@ -795,6 +881,7 @@ from experiment.box_factory import BoxFactory
 from PyQt5.QtWinExtras import QWinTaskbarButton
 class BackgroudDisp(QThread):
     Finish = pyqtSignal(str)
+    item_sig = pyqtSignal(str,str)
     is_running = True
     def __init__(self,parent,path_list,op):
         super(BackgroudDisp,self).__init__()
@@ -837,6 +924,8 @@ class BackgroudDisp(QThread):
             self.parent.chart.updateChart(cls_num)
             time.sleep(0.2)
             self.op.write(path,size_info,line_info,cd_info,od_info)
+            emit1,emit2 = self.ListGet(path,size_info,line_info,cd_info,od_info)
+            self.item_sig.emit(emit1,emit2)
             self.cur+=1
         if self.is_running:
             self.Finish.emit("后台处理完成！")
@@ -845,7 +934,37 @@ class BackgroudDisp(QThread):
             self.Finish.emit("中断后台处理")
             self.taskProgress.hide()
             self.taskProgress.setValue(0)
+    def ListGet(self,path,size_info,line_info,cd_info,od_info):
+        img = cv2.imread(path)
+        name = os.path.split(path)[-1]
+        mask1 = np.zeros_like(img, np.uint8)
+        mask2 = np.zeros_like(img, np.uint8)
+        mask3 = np.zeros_like(img, np.uint8)
+        emit1 = "None"
+        emit2 = "None"
+        mask1 = mask1 # TODO 这里换成画线生成的mask
+        img = self.merge_mask(img,mask1)
+        if len(cd_info[0])!=0:
+            for item in cd_info:
+                mask2 = cv2.rectangle(mask2,(item[0],item[2]),(item[1],item[3]),(255,255,255),thickness=2)
+            merge1 = self.merge_mask(img, mask2)
 
+            cv2.imwrite("./temp/change_temp/" + name, merge1)
+            emit1 = name
+        if len(od_info[0]) != 0:
+            for item in od_info:
+                color = color_map[str(item[4])]
+                mask3 = cv2.rectangle(mask3, (item[0], item[2]), (item[1], item[3]), (color[2],color[1],color[0]), thickness=2)
+            merge2 = self.merge_mask(img,mask3)
+
+            cv2.imwrite("./temp/object_temp/"+name,merge2)
+            emit2 = name
+        return emit1, emit2
+
+    def merge_mask(self,img,mask):
+        temp_img = img.copy()
+        temp_img[mask!=0]=mask[mask!=0]
+        return temp_img
 
 class Play(QThread):  # 播放图片的线程
     next_signal =pyqtSignal()

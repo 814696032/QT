@@ -103,6 +103,9 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         self.action_opendata=QAction("载入数据",self.menu1)
         self.menu1.addAction(self.action_opendata)
         self.action_opendata.triggered.connect(lambda: print("载入数据"))
+        self.action_openxml = QAction("载入xml文件",self.menu1)
+        self.menu1.addAction(self.action_openxml)
+
 
         self.action_save = QAction("保存",self.menu1)
         self.menu1.addAction(self.action_save)
@@ -113,7 +116,7 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         self.menu_button1.setMenu(self.menu1)
         self.action_exit=QAction("退出",self.menu1)
         self.menu1.addAction(self.action_exit)
-        self.action_exit.triggered.connect(self.close)
+
 
 
         self.menu2 = QMenu()  # 第二个按钮菜单
