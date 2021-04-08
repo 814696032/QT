@@ -27,15 +27,16 @@ color_map = {'0': [0, 255, 255], '1': [255, 0, 0], '2': [0, 255, 0], '3': [0, 0,
 
 
 class Time(QThread):
-
+    is_running = True
     def __init__(self,parent):
         super(Time,self).__init__()
         self.parent = parent
+        self.is_running = True
     def run(self):
-        while(1):
+        while(self.is_running):
             t = time.strftime('%H:%M:%S')
             self.parent.lcdNumber.display(t)
-            time.sleep(1)
+            time.sleep(0.7)
 
 #逻辑文件，业务文件
 class AppDialog(MainDialog):
@@ -230,6 +231,7 @@ class AppDialog(MainDialog):
         try:
             self.bd.is_running = False
             self.play_stop()
+            self.timer.is_running = False
         except:
             print("线程未开启")
         self.close()
@@ -516,7 +518,7 @@ class AppDialog(MainDialog):
         self.line_group, self.cd_group, self.od_group, self.cls_num = gi.Disp()
         report = CurrentImgLog(self, self.cd_group, self.od_group)
         report.update()
-        self.chart.updateChart(self.cls_num)
+        # self.chart.updateChart(self.cls_num)
         self.scene.addItem(self.line_group)
         self.scene.addItem(self.cd_group)
         self.scene.addItem(self.od_group)

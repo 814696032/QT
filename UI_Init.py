@@ -232,18 +232,16 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         # self.background_movie.start()  # 是否需要动态背景
 
     def init_chart(self):
-        self.chart = ChartView2(self.label_2)
+        self.label_2.setContentsMargins(0,0,0,0)
+        chartlay = QHBoxLayout()
+        chartlay.setContentsMargins(0,0,0,0)
+        self.label_2.setLayout(chartlay)
+        self.chart = ChartView2()
+        chartlay.addWidget(self.chart)
         self.chart.setObjectName("chart")
-        self.chart.resize(300,200)
 
     def init_other(self):
         pass
-
-    # *********关于选项**************
-    # def open_about(self):
-    #     about_win = Ui_about()
-    #     about_win.setupUi()
-    #     about_win.open()
 
     # *********事件部分重写************
     def closeEvent(self,event ) : #重新实现关闭事件
@@ -254,15 +252,11 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         else:
             event.ignore()#忽略该指令
 
-import time
-
-
 class About_Window(QDialog,Ui_about):  # 关于对话框
     def __init__(self):
         super(About_Window,self).__init__()
         self.setupUi(self)
         self.setWindowTitle("关于")
-
 
 class Setting_Window(QWidget,Ui_setting):  # 设置对话框
     def __init__(self):
@@ -317,11 +311,11 @@ class Image_Window(QWidget,Ui_Image_windows):
         self.image_left.setGeometry(0,25,50,self.height()-25-75)
         self.image_right.setGeometry(self.width()-40,25,50,self.height()-25-75)
         self.image_view.setGeometry(0,25,self.width(),self.height()-25-75)
-        self.image_start_detect.setGeometry(self.width()/2-25,self.height()-50-4-20,50,50)
-        self.image_stop_detect.setGeometry(self.width()/2+25+20,self.height()-50-4-20,50,50)
-        self.image_change_detect.setGeometry(self.width()/2-200,self.height()-25-20,87,19)
-        self.image_obj_detect.setGeometry(self.width() / 2 - 200, self.height() - 50-20, 87, 19)
-        self.image_line.setGeometry(self.width()/2-200,self.height()-20,97,19)
+        self.image_start_detect.setGeometry(self.width()/2-50-10,self.height()-50-10,50,50)
+        self.image_stop_detect.setGeometry(self.width()/2+10,self.height()-50-10,50,50)
+        self.image_change_detect.setGeometry(self.width()/4-65,self.height()-25-20,97,19)
+        self.image_obj_detect.setGeometry(self.width()/4-65, self.height() - 50-20, 97, 19)
+        self.image_line.setGeometry(self.width()/4-65,self.height()-20,97,19)
 
     def switch_play_icon(self,flag):
         if flag=='p':
