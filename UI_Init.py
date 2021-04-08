@@ -25,7 +25,7 @@ class MainDialog(QMainWindow,Ui_MainWindow):#Qwidget有最大最小化，Qdialog
         self.resize(1280,800)
         self.initUI()
 
-
+        self.BackDispProgress.setAttribute(Qt.WA_TranslucentBackground)
         self.background = QHBoxLayout()
         self.backlabel = QLabel("balabalabalaba")
         self.background.addWidget(self.backlabel)

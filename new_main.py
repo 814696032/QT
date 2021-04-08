@@ -887,10 +887,11 @@ class BackgroudDisp(QThread):
     is_running = True
     def __init__(self,parent,path_list,op):
         super(BackgroudDisp,self).__init__()
-        self.taskButton = QWinTaskbarButton(parent)
-        self.taskButton.setWindow(parent.windowHandle())
-        self.taskProgress = self.taskButton.progress()
         self.parent = parent
+        self.taskButton = QWinTaskbarButton(self.parent)
+        self.taskButton.setWindow(self.parent.windowHandle())
+        self.taskProgress = self.taskButton.progress()
+
         self.taskProgress.setMaximum(100)
         self.taskProgress.setMinimum(0)
         self.path_list = path_list
@@ -911,6 +912,7 @@ class BackgroudDisp(QThread):
         import time
         while(self.cur<=self.size-1 and self.is_running):
             if self.size>1:
+                self.parent.BackDispProgress.setValue(int(self.cur*100 / (self.size-1)))
                 self.taskProgress.setValue(int(self.cur*100 / (self.size-1)))
             path = self.path_list[self.cur]
             size_info = [self.width,self.height,self.depth]
@@ -936,6 +938,7 @@ class BackgroudDisp(QThread):
             self.Finish.emit("中断后台处理")
             self.taskProgress.hide()
             self.taskProgress.setValue(0)
+            self.parent.BackDispProgress.setValue(0)
     def ListGet(self,path,size_info,line_info,cd_info,od_info):
         img = cv2.imread(path)
         name = os.path.split(path)[-1]
